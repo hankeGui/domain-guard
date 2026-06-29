@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>domain-guard admin</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --panel2:#1f242d; --fg:#e6e6e6;
+    --muted:#8a93a3; --pass:#3fb950; --block:#f85149; --warn:#d29922;
+    --border:#2a313c; --accent:#58a6ff;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+  header{display:flex;align-items:center;gap:16px;padding:14px 20px;
+    background:var(--panel);border-bottom:1px solid var(--border);}
+  header h1{margin:0;font-size:16px;font-weight:600;}
+  header .right{margin-left:auto;color:var(--muted);font-size:12px;}
+  main{display:grid;grid-template-columns:280px 1fr;gap:0;height:calc(100vh - 49px);}
+  aside{background:var(--panel);border-right:1px solid var(--border);padding:14px;
+    overflow:auto;}
+  section.content{padding:14px 20px;overflow:auto;}
+  .guard-item{padding:8px 10px;border-radius:6px;cursor:pointer;margin-bottom:4px;
+    display:flex;justify-content:space-between;align-items:center;}
+  .guard-item:hover{background:var(--panel2);}
+  .guard-item.active{background:var(--accent);color:#0f1115;font-weight:600;}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+  .stat{background:var(--panel);padding:12px 14px;border-radius:6px;border:1px solid var(--border);}
+  .stat .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px;}
+  .stat .value{font-size:22px;font-weight:600;margin-top:4px;}
+  .stat.pass .value{color:var(--pass);}
+  .stat.block .value{color:var(--block);}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:10px;letter-spacing:0.6px;}
+  tr.pass td:first-child{border-left:3px solid var(--pass);}
+  tr.block td:first-child{border-left:3px solid var(--block);}
+  .badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;
+    background:var(--panel2);color:var(--muted);}
+  .badge.pass{background:rgba(63,185,80,0.15);color:var(--pass);}
+  .badge.block{background:rgba(248,81,73,0.15);color:var(--block);}
+  .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;}
+  button,input,select,textarea{font:inherit;color:var(--fg);background:var(--panel2);
+    border:1px solid var(--border);padding:6px 10px;border-radius:4px;}
+  button{cursor:pointer;}
+  button:hover{background:var(--border);}
+  button.primary{background:var(--accent);color:#0f1115;border-color:var(--accent);font-weight:600;}
+  textarea{width:100%;min-height:380px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;}
+  .row{display:flex;gap:16px;}
+  .col{flex:1;min-width:0;}
+  h2{margin:18px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;font-weight:600;}
+  .msg{max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;}
+  .tab{padding:8px 14px;cursor:pointer;color:var(--muted);}
+  .tab.active{color:var(--fg);border-bottom:2px solid var(--accent);}
+  .pill{padding:2px 8px;border-radius:10px;background:var(--panel2);font-size:11px;}
+  .toast{position:fixed;bottom:20px;right:20px;background:var(--panel);
+    border:1px solid var(--border);padding:10px 14px;border-radius:6px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.4);}
+  .toast.ok{border-color:var(--pass);}
+  .toast.err{border-color:var(--block);}
+</style>
+</head>
+<body>
+<header>
+  <h1>domain-guard admin</h1>
+  <span class="pill" id="health-pill">loading...</span>
+  <span class="right">auto-refresh every 3s</span>
+</header>
+<main>
+  <aside>
+    <h2>Guards</h2>
+    <div id="guard-list"></div>
+    <h2>Filters</h2>
+    <label style="display:block;margin-bottom:6px;">
+      <input type="checkbox" id="filter-blocked"> blocked only
+    </label>
+    <label style="display:block;">
+      limit:
+      <select id="filter-limit">
+        <option>20</option><option selected>50</option><option>100</option><option>200</option>
+      </select>
+    </label>
+  </aside>
+  <section class="content">
+    <div class="tab-bar">
+      <div class="tab active" data-tab="overview">Overview</div>
+      <div class="tab" data-tab="config">Config editor</div>
+    </div>
+
+    <div id="tab-overview">
+      <div class="stats">
+        <div class="stat"><div class="label">Total decisions</div><div class="value" id="stat-total">0</div></div>
+        <div class="stat pass"><div class="label">Pass rate</div><div class="value" id="stat-passrate">—</div></div>
+        <div class="stat block"><div class="label">Blocked</div><div class="value" id="stat-blocked">0</div></div>
+        <div class="stat"><div class="label">Avg latency</div><div class="value" id="stat-latency">—</div></div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <h2>By layer</h2>
+          <table id="tbl-layer"><thead><tr><th>layer</th><th>count</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="col">
+          <h2>By guard</h2>
+          <table id="tbl-guard"><thead><tr><th>guard</th><th>count</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <h2>Recent decisions</h2>
+      <table id="tbl-decisions">
+        <thead><tr>
+          <th>time</th><th>verdict</th><th>guard</th><th>layer</th>
+          <th>conf</th><th>ms</th><th class="msg">message</th><th>reason</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div id="tab-config" style="display:none;">
+      <div class="toolbar">
+        <span>Editing: <strong id="cfg-guard">—</strong></span>
+        <span style="color:var(--muted);font-size:12px;">
+          (pick a guard in the sidebar to switch)
+        </span>
+        <span style="flex:1"></span>
+        <button onclick="reloadGuard()">Manual reload</button>
+        <button class="primary" onclick="saveConfig()">Save & reload</button>
+      </div>
+      <textarea id="cfg-text" spellcheck="false" placeholder="Loading…"></textarea>
+    </div>
+  </section>
+</main>
+<div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+let currentGuard = null;
+let allGuards = [];
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const wantConfig = t.dataset.tab === 'config';
+    document.getElementById('tab-overview').style.display = wantConfig ? 'none' : '';
+    document.getElementById('tab-config').style.display = wantConfig ? '' : 'none';
+    if (wantConfig) {
+      // Auto-pick the first guard if the user hasn't chosen one yet.
+      if (!currentGuard && allGuards.length > 0) {
+        currentGuard = allGuards[0];
+        renderGuardList();
+      }
+      if (currentGuard) loadConfig(currentGuard);
+      else {
+        document.getElementById('cfg-guard').textContent = '— (no guards loaded)';
+        document.getElementById('cfg-text').value = '';
+      }
+    }
+  };
+});
+
+function toast(msg, ok=true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2500);
+}
+
+async function refreshHealth() {
+  const r = await fetch('/health').then(r => r.json());
+  document.getElementById('health-pill').textContent =
+    `${r.guards.length} guard(s) loaded · ${r.reload_count} reload(s)`;
+  allGuards = r.guards;
+  renderGuardList();
+}
+
+function isConfigTabActive() {
+  return document.querySelector('.tab.active')?.dataset.tab === 'config';
+}
+
+function renderGuardList() {
+  const el = document.getElementById('guard-list');
+  el.innerHTML = '';
+  const allItem = document.createElement('div');
+  allItem.className = 'guard-item' + (currentGuard === null ? ' active' : '');
+  allItem.innerHTML = '<span>(all guards)</span><span class="badge">overview</span>';
+  allItem.onclick = () => {
+    if (isConfigTabActive()) {
+      toast('Pick a specific guard to edit its config', false);
+      return;
+    }
+    currentGuard = null;
+    renderGuardList();
+    refresh();
+  };
+  el.appendChild(allItem);
+  for (const name of allGuards) {
+    const it = document.createElement('div');
+    it.className = 'guard-item' + (currentGuard === name ? ' active' : '');
+    it.innerHTML = `<span>${name}</span>`;
+    it.onclick = () => {
+      currentGuard = name;
+      renderGuardList();
+      if (isConfigTabActive()) {
+        loadConfig(name);
+      } else {
+        refresh();
+      }
+    };
+    el.appendChild(it);
+  }
+}
+
+async function refresh() {
+  const limit = document.getElementById('filter-limit').value;
+  const onlyBlocked = document.getElementById('filter-blocked').checked;
+  const url = new URL('/v1/decisions/recent', location.origin);
+  url.searchParams.set('limit', limit);
+  url.searchParams.set('only_blocked', onlyBlocked);
+  if (currentGuard) url.searchParams.set('guard', currentGuard);
+  const r = await fetch(url).then(r => r.json());
+
+  const s = r.summary;
+  document.getElementById('stat-total').textContent = s.total || 0;
+  document.getElementById('stat-passrate').textContent =
+    s.pass_rate != null ? (s.pass_rate * 100).toFixed(1) + '%' : '—';
+  document.getElementById('stat-blocked').textContent = s.blocked || 0;
+  document.getElementById('stat-latency').textContent =
+    s.avg_latency_ms != null ? s.avg_latency_ms + ' ms' : '—';
+
+  renderKV('tbl-layer', s.by_layer || {});
+  renderKV('tbl-guard', s.by_guard || {});
+
+  const tb = document.querySelector('#tbl-decisions tbody');
+  tb.innerHTML = '';
+  for (const x of r.items) {
+    const tr = document.createElement('tr');
+    tr.className = x.passed ? 'pass' : 'block';
+    const t = new Date(x.ts * 1000).toLocaleTimeString();
+    tr.innerHTML = `
+      <td>${t}</td>
+      <td><span class="badge ${x.passed?'pass':'block'}">${x.passed?'PASS':'BLOCK'}</span></td>
+      <td>${x.guard}</td>
+      <td>${x.layer || '-'}</td>
+      <td>${x.confidence.toFixed(2)}</td>
+      <td>${x.latency_ms}</td>
+      <td class="msg" title="${escapeHtml(x.message)}">${escapeHtml(x.message)}</td>
+      <td>${escapeHtml(x.reason)}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+function renderKV(tableId, obj) {
+  const tb = document.querySelector('#' + tableId + ' tbody');
+  tb.innerHTML = '';
+  const items = Object.entries(obj).sort((a,b) => b[1]-a[1]);
+  for (const [k,v] of items) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${k}</td><td>${v}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+async function loadConfig(name) {
+  document.getElementById('cfg-guard').textContent = name;
+  const r = await fetch(`/v1/guards/${encodeURIComponent(name)}/config`).then(r=>r.json());
+  document.getElementById('cfg-text').value = r.content || '';
+}
+
+async function saveConfig() {
+  if (!currentGuard) { toast('Pick a guard first', false); return; }
+  const content = document.getElementById('cfg-text').value;
+  const resp = await fetch(`/v1/guards/${encodeURIComponent(currentGuard)}/config`, {
+    method: 'PUT',
+    headers: {'content-type': 'application/json'},
+    body: JSON.stringify({content})
+  });
+  if (resp.ok) {
+    const r = await resp.json();
+    toast(`Saved & reloaded (count=${r.reload_count})`);
+    refreshHealth();
+  } else {
+    const txt = await resp.text();
+    toast('Save failed: ' + txt, false);
+  }
+}
+
+async function reloadGuard() {
+  if (!currentGuard) { toast('Pick a guard first', false); return; }
+  const resp = await fetch(`/v1/guards/${encodeURIComponent(currentGuard)}/reload`, {method:'POST'});
+  if (resp.ok) {
+    const r = await resp.json();
+    toast(`Reloaded (count=${r.reload_count})`);
+  } else {
+    toast('Reload failed', false);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+refreshHealth();
+refresh();
+setInterval(refresh, 3000);
+setInterval(refreshHealth, 10000);
+</script>
+</body>
+</html>

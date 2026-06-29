@@ -1,0 +1,58 @@
+name: hr-agent-guard
+version: "1.0"
+mode: enforce
+
+domain:
+  description: "HR / 人力资源 — 请假、考勤、薪资、社保、入离职等"
+
+pipeline:
+  - type: context_bypass
+    when:
+      state.stage: collecting_slots
+
+  - type: rule
+    block_patterns:
+      - "你是.*(什么|哪个).*(模型|ai|llm)"
+      - "讲.*笑话"
+      - "今天.*天气"
+    allow_keywords:
+      - 请假
+      - 年假
+      - 调休
+      - 考勤
+      - 打卡
+      - 工资
+      - 社保
+      - 公积金
+      - 入职
+      - 离职
+      - leave
+      - payroll
+
+  - type: embedding
+    domain_examples:
+      - 我要请假
+      - 帮我提交一个年假申请
+      - 查一下我剩多少调休
+      - 这个月考勤异常
+      - 工资条在哪查
+      - 社保缴纳记录
+      - 离职流程是什么
+      - 入职第一天要做什么
+    ood_examples:
+      - 你是什么模型
+      - 查 forecast
+      - 产品预测
+      - 修改单价
+      - 帮我写代码
+    threshold:
+      pass: 0.55
+      block: 0.30
+
+fallback:
+  reply: |
+    抱歉，HR 助手只回答请假、考勤、薪资、社保、入离职相关问题。
+  suggested_replies:
+    - 请假申请
+    - 查考勤
+    - 工资条

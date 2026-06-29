@@ -1,0 +1,85 @@
+name: forecast-agent-guard
+version: "1.0"
+mode: enforce   # or "shadow" to observe without blocking
+
+domain:
+  description: >
+    FinSense 产品与 Forecast 数据管理。包括：产品 forecast 的查询、更新、预估；
+    ARE / 客户部门 / 成本中心 / 单价等字段的维护。不包括通用编程、闲聊、
+    模型自我介绍、其他业务系统(HR、IT工单等)。
+
+pipeline:
+  # L0: 已经在意图流程里 → 直接放行（避免把"补充 slot"误杀）
+  - type: context_bypass
+    when:
+      state.stage: collecting_slots
+
+  # L1: 关键词/正则规则
+  - type: rule
+    block_patterns:
+      - "你是.*(什么|哪个).*(模型|ai|llm)"
+      - "who are you"
+      - "what model"
+      - "ignore .* (previous|above)"
+      - "忽略.*(之前|上面|系统).*(指令|提示)"
+      - "讲.*笑话"
+      - "今天.*天气"
+      - "写.*(python|java|代码|程序)"
+    allow_keywords:
+      - forecast
+      - 预测
+      - are
+      - 成本中心
+      - 客户部门
+      - 单价
+      - customer division
+      - cost center
+
+  # L2: 语义相似度
+  - type: embedding
+    domain_examples:
+      - 查询产品 forecast
+      - 帮我看下产品A的forecast
+      - 更新 ARE001 的预测数据
+      - Forecast 管理
+      - 产品 Forecast 预估
+      - 修改产品单价
+      - 查询客户部门的销售预测
+      - 成本中心是多少
+      - 新增一条 forecast 记录
+      - 删除某个产品的 forecast
+      - 调整 ARE 的预测值
+      - 我想做 forecast 预估
+      - 给我列出所有产品的预测
+      - 产品A的客户部门是什么
+      - 查一下 cost center 的归属
+      - 把单价改成 100
+      - 返回功能选择
+    ood_examples:
+      - 你是什么模型
+      - who are you
+      - 今天天气怎么样
+      - 帮我写一段 Python 代码
+      - 讲个笑话
+      - 翻译这句话
+      - 教我用 SQL
+      - 怎么学习机器学习
+      - 解释一下量子力学
+      - 帮我写邮件
+    threshold:
+      pass: 0.62
+      block: 0.35
+
+  # L3: 小 LLM 兜底（可选，注释掉就只跑前两层）
+  # - type: llm_fallback
+  #   model: claude-haiku-4-5
+
+fallback:
+  reply: |
+    抱歉，我专注于 FinSense 产品和 Forecast 管理，无法回答这个问题。
+    你可以问我：
+    • Forecast 管理 — 查询/更新预测数据
+    • 产品 Forecast 预估 — 基于现有数据做预测
+  suggested_replies:
+    - Forecast管理
+    - 产品Forecast预估

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "domain-guard"
+version = "0.1.0"
+description = "Pluggable domain guard for LLM agents — block off-topic requests before they hit your expensive model."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "hankeGui"}]
+requires-python = ">=3.9"
+keywords = ["llm", "agent", "guardrails", "intent-classification", "rate-limit"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+]
+
+[project.urls]
+Homepage = "https://github.com/hankeGui/domain-guard"
+Documentation = "https://github.com/hankeGui/domain-guard/tree/main/docs"
+Issues = "https://github.com/hankeGui/domain-guard/issues"
+
+[project.optional-dependencies]
+local = ["sentence-transformers>=2.5"]
+claude = ["anthropic>=0.40"]
+sidecar = ["fastapi>=0.110", "uvicorn>=0.27", "prometheus_client>=0.20"]
+redis = ["redis>=5.0"]
+all = ["sentence-transformers>=2.5", "anthropic>=0.40", "fastapi>=0.110", "uvicorn>=0.27", "prometheus_client>=0.20", "redis>=5.0"]
+
+[project.scripts]
+guard-cli = "domain_guard.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["domain_guard*"]
+
+[tool.setuptools.package-data]
+domain_guard = ["admin.html"]

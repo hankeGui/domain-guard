@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # Skip [local] (sentence-transformers) in CI — tests use the hash
+          # fallback embedder. Include sidecar so integration tests work.
+          pip install -e ".[sidecar]" pytest pytest-timeout pyyaml httpx
+
+      - name: Run unit tests
+        env:
+          DOMAIN_GUARD_EMBEDDING: hash
+        run: pytest tests/unit -q --timeout=30
+
+      - name: Run integration tests
+        env:
+          DOMAIN_GUARD_EMBEDDING: hash
+        run: pytest tests/integration -q --timeout=120

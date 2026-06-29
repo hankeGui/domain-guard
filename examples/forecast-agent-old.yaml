@@ -1,0 +1,43 @@
+name: forecast-agent-guard
+version: "0.9-old"
+mode: enforce
+
+domain:
+  description: "FinSense 产品与 Forecast 数据管理"
+
+pipeline:
+  - type: context_bypass
+    when:
+      state.stage: collecting_slots
+
+  - type: rule
+    # 故意比 examples/forecast-agent.yaml 少几条 block 规则，模拟老配置
+    block_patterns:
+      - "你是.*(什么|哪个).*(模型|ai|llm)"
+      - "who are you"
+    allow_keywords:
+      - forecast
+      - 预测
+      - are
+      - 成本中心
+      - 客户部门
+      - 单价
+
+  - type: embedding
+    domain_examples:
+      - 查询产品 forecast
+      - 帮我看下产品A的forecast
+      - 更新 ARE001 的预测数据
+      - Forecast 管理
+      - 产品 Forecast 预估
+      - 修改产品单价
+    ood_examples:
+      - 你是什么模型
+      - 讲个笑话
+    threshold:
+      pass: 0.55      # 故意比新配置宽松，本应该会"漏放"更多
+      block: 0.20
+
+fallback:
+  reply: "(old) 不在领域内"
+  suggested_replies: []
