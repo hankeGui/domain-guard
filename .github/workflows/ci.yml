@@ -39,3 +39,11 @@ jobs:
         env:
           DOMAIN_GUARD_EMBEDDING: hash
         run: pytest tests/integration -q --timeout=120
+
+      - name: Run demo tests
+        env:
+          DOMAIN_GUARD_EMBEDDING: hash
+          LLM_PROVIDER: mock
+        run: |
+          pip install fastapi anthropic openai
+          cd demo && pytest tests/ -q --timeout=30

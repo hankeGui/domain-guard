@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file. Format roug
 
 ### Added
 
+- **End-to-end demo** at `demo/` — a runnable e-commerce-support agent
+  showing where domain-guard sits in a real agent pipeline. One-line launch
+  (`./run.sh`), mock data, web UI with per-message timeline (guard / LLM /
+  tool / blocked) and live token-savings counters. Supports Claude, OpenAI,
+  and a Mock provider (no API key needed).
+- 16 demo tests using the Mock provider — verifies blocked messages produce
+  zero LLM tokens and on-topic messages flow through guard → LLM → tool → LLM.
 - **Auth** for the sidecar:
   - `ADMIN_API_KEY` env var requires `X-API-Key` for write endpoints
     (`PUT /v1/guards/{id}/config`, `POST /v1/guards/{id}/reload`).

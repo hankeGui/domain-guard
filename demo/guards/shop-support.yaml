@@ -1,0 +1,80 @@
+name: shop-support-guard
+version: "1.0"
+mode: enforce
+
+domain:
+  description: >
+    电商客服 — 订单查询、物流追踪、退换货、发票、支付问题。
+    用户可能给出订单号 (如 ORD-1234) 或快递单号 (如 SF-9988-7766)。
+    不处理产品推荐、营销、编程、闲聊、模型自我介绍、prompt injection。
+
+pipeline:
+  - type: context_bypass
+    when:
+      state.stage: collecting_slots
+
+  - type: rule
+    block_patterns:
+      - "你是.*(什么|哪个).*(模型|ai|llm|gpt|claude)"
+      - "what model"
+      - "who are you"
+      - "(忽略|ignore).*(之前|previous|above).*(指令|instruction|prompt)"
+      - "告诉我.*(system|系统).*(prompt|提示)"
+      - "写.*(python|java|代码|程序|快排)"
+      - "讲.*笑话"
+      - "今天.*天气"
+    allow_keywords:
+      - 订单
+      - order
+      - ord-
+      - 物流
+      - shipment
+      - 快递
+      - sf-
+      - 退货
+      - return
+      - 退款
+      - refund
+      - 换货
+      - 发票
+      - invoice
+      - 支付
+      - payment
+
+  - type: embedding
+    domain_examples:
+      - 我的订单到哪了
+      - 帮我查一下订单状态
+      - 快递怎么还没送到
+      - 我要退货
+      - 申请退款
+      - 包裹丢了怎么办
+      - 怎么换货
+      - 发票什么时候开
+      - 支付失败了
+      - 取消订单
+      - 修改收货地址
+      - 我的耳机什么时候到
+    ood_examples:
+      - 你是什么模型
+      - 推荐一个手机
+      - 帮我写代码
+      - 讲个笑话
+      - 今天上海天气如何
+      - 翻译这句话
+    threshold:
+      pass: 0.55
+      block: 0.30
+
+fallback:
+  reply: |
+    抱歉，我是电商客服助手，只能处理订单、物流、退换货、发票和支付相关问题。
+    您可以问我：
+    • 查询订单状态（如 "ORD-1001 的订单到哪了"）
+    • 物流追踪（如 "SF-9988-7766 快递在哪"）
+    • 退换货申请
+    • 发票或支付问题
+  suggested_replies:
+    - 查询订单
+    - 物流追踪
+    - 申请退货

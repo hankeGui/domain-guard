@@ -23,6 +23,7 @@ Every layer can return `pass` / `block` / `defer`. First non-defer wins. If ever
 
 ## Documentation
 
+- **[Quick demo](demo/README.md)** — 5-minute hands-on: a working e-commerce-support agent with mock data, web UI, and live token savings counter. No code changes — just fill in an API key (or run in mock mode without one) and open `http://localhost:9000`.
 - **[User guide](docs/user-guide.md)** — 5-minute setup, YAML reference, sidecar deployment, troubleshooting
 - **[Developer guide](docs/dev.md)** — architecture, extending layers/providers, contributing
 - **[AI agent guide](docs/ai-dev.md)** — for Claude Code / Copilot / Cursor working in this repo

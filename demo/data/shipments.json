@@ -1,0 +1,35 @@
+{
+  "SF-9988-7766": {
+    "shipment_id": "SF-9988-7766",
+    "carrier": "顺丰",
+    "status": "in_transit",
+    "current_location": "上海市浦东新区张江中转站",
+    "estimated_delivery": "2026-06-30",
+    "history": [
+      {"ts": "2026-06-28T20:00:00Z", "location": "深圳分拨中心", "event": "已揽收"},
+      {"ts": "2026-06-29T08:30:00Z", "location": "上海浦东中转站", "event": "运输中"}
+    ]
+  },
+  "SF-9988-1234": {
+    "shipment_id": "SF-9988-1234",
+    "carrier": "顺丰",
+    "status": "delivered",
+    "current_location": "上海市浦东新区张江路 88 号",
+    "estimated_delivery": "2026-06-17",
+    "history": [
+      {"ts": "2026-06-16T09:00:00Z", "location": "深圳分拨中心", "event": "已揽收"},
+      {"ts": "2026-06-17T11:20:00Z", "location": "张江路 88 号", "event": "已签收"}
+    ]
+  },
+  "SF-1122-3344": {
+    "shipment_id": "SF-1122-3344",
+    "carrier": "圆通",
+    "status": "delivered",
+    "current_location": "上海市浦东新区张江路 88 号",
+    "estimated_delivery": "2026-06-12",
+    "history": [
+      {"ts": "2026-06-11T14:00:00Z", "location": "广州分拨中心", "event": "已揽收"},
+      {"ts": "2026-06-12T16:00:00Z", "location": "张江路 88 号", "event": "已签收"}
+    ]
+  }
+}

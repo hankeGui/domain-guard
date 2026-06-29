@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>domain-guard demo · 电商客服 agent</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --panel2:#1f242d;
+    --fg:#e6e6e6; --muted:#8a93a3; --border:#2a313c;
+    --pass:#3fb950; --block:#f85149; --warn:#d29922; --accent:#58a6ff;
+    --guard:#9580ff; --llm:#58a6ff; --tool:#3fb950; --blocked:#f85149;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;}
+  header{display:flex;align-items:center;gap:16px;padding:12px 20px;
+    background:var(--panel);border-bottom:1px solid var(--border);}
+  header h1{margin:0;font-size:16px;font-weight:600;}
+  header .pill{padding:2px 8px;border-radius:10px;background:var(--panel2);font-size:11px;color:var(--muted);}
+  header .right{margin-left:auto;display:flex;gap:14px;align-items:center;}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;}
+  .toggle input{width:32px;height:18px;appearance:none;background:var(--panel2);
+    border:1px solid var(--border);border-radius:10px;position:relative;cursor:pointer;}
+  .toggle input:checked{background:var(--pass);}
+  .toggle input::after{content:"";width:12px;height:12px;background:var(--fg);
+    border-radius:50%;position:absolute;top:2px;left:2px;transition:.15s;}
+  .toggle input:checked::after{left:16px;background:#0f1115;}
+
+  main{display:grid;grid-template-columns:1fr 320px;height:calc(100vh - 49px);}
+  .left{display:flex;flex-direction:column;border-right:1px solid var(--border);}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:10px 14px;
+    background:var(--panel);border-bottom:1px solid var(--border);}
+  .stat{padding:6px 8px;}
+  .stat .label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.6px;}
+  .stat .value{font-size:18px;font-weight:600;margin-top:2px;}
+  .stat.saved .value{color:var(--pass);}
+  .stat.blocked .value{color:var(--block);}
+
+  #chat{flex:1;overflow:auto;padding:18px 14px;}
+  .msg-row{margin-bottom:18px;}
+  .bubble{display:inline-block;max-width:78%;padding:8px 12px;border-radius:10px;
+    background:var(--panel);white-space:pre-wrap;}
+  .msg-row.user{text-align:right;}
+  .msg-row.user .bubble{background:var(--accent);color:#0f1115;}
+  .msg-row.assistant .bubble{background:var(--panel);}
+  .msg-row.assistant.blocked .bubble{border:1px solid var(--block);}
+
+  /* Timeline — the centerpiece of the demo */
+  .timeline{margin-top:8px;padding:8px 10px;background:var(--panel2);
+    border-left:3px solid var(--border);border-radius:0 6px 6px 0;
+    font-size:11px;}
+  .timeline.blocked{border-left-color:var(--block);}
+  .timeline-summary{color:var(--muted);margin-bottom:6px;}
+  .event{display:flex;align-items:center;gap:8px;padding:3px 0;}
+  .event .step-chip{display:inline-block;padding:1px 6px;border-radius:3px;
+    font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;
+    min-width:60px;text-align:center;}
+  .event .step-chip.guard{background:rgba(149,128,255,0.2);color:var(--guard);}
+  .event .step-chip.guard_blocked{background:rgba(248,81,73,0.2);color:var(--block);}
+  .event .step-chip.llm{background:rgba(88,166,255,0.2);color:var(--llm);}
+  .event .step-chip.tool{background:rgba(63,185,80,0.2);color:var(--tool);}
+  .event .label{flex:1;}
+  .event .dur{color:var(--muted);font-variant-numeric:tabular-nums;}
+  .event .detail{color:var(--muted);font-size:10px;margin-left:8px;}
+  .saved-banner{background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);
+    color:var(--pass);padding:6px 10px;border-radius:6px;margin-top:6px;font-size:12px;}
+
+  /* Input */
+  .input-row{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--border);
+    background:var(--panel);}
+  .input-row input{flex:1;padding:8px 12px;background:var(--panel2);color:var(--fg);
+    border:1px solid var(--border);border-radius:6px;font:inherit;}
+  .input-row button{padding:8px 16px;background:var(--accent);color:#0f1115;
+    border:none;border-radius:6px;font-weight:600;cursor:pointer;}
+  .input-row button:hover{filter:brightness(1.1);}
+  .input-row button:disabled{opacity:0.5;cursor:not-allowed;}
+
+  /* Right pane */
+  .right-pane{overflow:auto;padding:14px;background:var(--panel);}
+  h2{margin:18px 0 8px;font-size:11px;color:var(--muted);
+    text-transform:uppercase;letter-spacing:0.6px;font-weight:600;}
+  h2:first-child{margin-top:0;}
+  .script-card{padding:8px 10px;background:var(--panel2);border:1px solid var(--border);
+    border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:12px;}
+  .script-card:hover{border-color:var(--accent);}
+  .script-card.block{border-left:3px solid var(--block);}
+  .script-card.pass{border-left:3px solid var(--pass);}
+  .script-title{font-weight:600;margin-bottom:2px;}
+  .script-desc{color:var(--muted);font-size:11px;}
+  .order{padding:6px 8px;background:var(--panel2);border-radius:4px;
+    margin-bottom:4px;font-size:11px;font-family:'SF Mono',Menlo,monospace;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>domain-guard demo</h1>
+  <span class="pill">电商客服 agent</span>
+  <span class="pill" id="provider-pill">…</span>
+  <div class="right">
+    <label class="toggle" title="关闭后，所有消息都送给 LLM — 用于对比">
+      <input type="checkbox" id="guard-toggle" checked>
+      <span>guard 启用</span>
+    </label>
+    <button onclick="resetSession()" style="background:var(--panel2);color:var(--fg);
+      border:1px solid var(--border);padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;">
+      重置对话
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="left">
+    <div class="stats">
+      <div class="stat"><div class="label">总消息</div><div class="value" id="s-total">0</div></div>
+      <div class="stat blocked"><div class="label">被拦截</div><div class="value" id="s-blocked">0</div></div>
+      <div class="stat"><div class="label">LLM 调用</div><div class="value" id="s-llm">0</div></div>
+      <div class="stat"><div class="label">工具调用</div><div class="value" id="s-tool">0</div></div>
+      <div class="stat saved"><div class="label">节省 tokens</div><div class="value" id="s-saved">0</div></div>
+    </div>
+    <div id="chat">
+      <div class="msg-row assistant">
+        <div class="bubble">您好，我是电商客服助手 🛍️ 试试问我"我的 ORD-1001 订单到哪了"，或者用右边的"试试看"快速加载一个对话。</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <input id="input" placeholder="输入消息，回车发送..." autocomplete="off">
+      <button id="send-btn" onclick="send()">发送</button>
+    </div>
+  </div>
+
+  <div class="right-pane">
+    <h2>试试看（一键加载对话）</h2>
+    <div id="scripts"></div>
+
+    <h2>当前用户的订单 (mock 数据)</h2>
+    <div id="orders"></div>
+
+    <h2>说明</h2>
+    <div style="color:var(--muted);font-size:11px;line-height:1.6;">
+      • 紫色 <strong style="color:#9580ff">guard</strong> = 守卫判决<br>
+      • 蓝色 <strong style="color:#58a6ff">llm</strong> = 调用大模型<br>
+      • 绿色 <strong style="color:#3fb950">tool</strong> = 查 mock 数据<br>
+      • 红色 = 被 guard 拦截，<strong>零 LLM tokens</strong><br><br>
+      关闭顶部"guard 启用"开关，可以看到没有守卫时跑题消息也会进 LLM。
+    </div>
+  </div>
+</main>
+
+<script>
+const SESSION_ID = 'demo-' + Math.random().toString(36).slice(2, 8);
+const $ = (id) => document.getElementById(id);
+
+async function send() {
+  const input = $('input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  $('send-btn').disabled = true;
+  appendUser(msg);
+
+  try {
+    const guard_enabled = $('guard-toggle').checked;
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify({session_id: SESSION_ID, message: msg, guard_enabled})
+    });
+    const data = await resp.json();
+    appendAssistant(data);
+    refreshStats();
+  } catch (e) {
+    appendAssistant({reply: 'Error: ' + e.message, blocked: false, events: []});
+  } finally {
+    $('send-btn').disabled = false;
+    input.focus();
+  }
+}
+
+$('input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+function appendUser(text) {
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+  $('chat').appendChild(row);
+  scrollChat();
+}
+
+function appendAssistant(data) {
+  const row = document.createElement('div');
+  row.className = 'msg-row assistant' + (data.blocked ? ' blocked' : '');
+
+  const tl = renderTimeline(data);
+  row.innerHTML = `<div class="bubble">${escapeHtml(data.reply || '')}</div>${tl}`;
+  $('chat').appendChild(row);
+  scrollChat();
+}
+
+function renderTimeline(data) {
+  if (!data.events || data.events.length === 0) return '';
+  const totalMs = data.total_duration_ms || 0;
+  let lines = '';
+  for (const ev of data.events) {
+    const detail = renderDetail(ev);
+    lines += `<div class="event">
+      <span class="step-chip ${ev.step}">${ev.step.replace('_', ' ')}</span>
+      <span class="label">${escapeHtml(ev.label)}</span>
+      <span class="detail">${detail}</span>
+      <span class="dur">${ev.duration_ms.toFixed(1)} ms</span>
+    </div>`;
+  }
+  const tokensLine = (data.tokens_in || data.tokens_out)
+    ? `<div class="timeline-summary">⏱ ${totalMs.toFixed(0)} ms · 🪙 tokens: ${data.tokens_in} in / ${data.tokens_out} out</div>`
+    : `<div class="timeline-summary">⏱ ${totalMs.toFixed(0)} ms · 0 tokens 消耗</div>`;
+  const savedBanner = data.blocked && data.saved_tokens
+    ? `<div class="saved-banner">✓ guard 提前拦截 — 节省约 ${data.saved_tokens} tokens（避免了 LLM 调用）</div>`
+    : '';
+  return `<div class="timeline ${data.blocked ? 'blocked' : ''}">${tokensLine}${lines}${savedBanner}</div>`;
+}
+
+function renderDetail(ev) {
+  const d = ev.detail || {};
+  if (ev.step === 'guard' || ev.step === 'guard_blocked') {
+    return `${d.matched_layer || '-'} · ${(d.confidence||0).toFixed(2)}`;
+  }
+  if (ev.step === 'llm') {
+    const tools = (d.tool_calls || []).length ? `→ ${d.tool_calls.join(',')}` : '→ reply';
+    return `${d.provider || ''} ${tools}`;
+  }
+  if (ev.step === 'tool') {
+    return JSON.stringify(d.args || {}).slice(0, 50);
+  }
+  return '';
+}
+
+async function refreshStats() {
+  const s = await fetch('/api/stats').then(r => r.json());
+  $('s-total').textContent = s.total_messages;
+  $('s-blocked').textContent = s.blocked_messages;
+  $('s-llm').textContent = s.llm_calls;
+  $('s-tool').textContent = s.tool_calls;
+  $('s-saved').textContent = s.saved_tokens.toLocaleString();
+  $('provider-pill').textContent = 'provider: ' + s.provider;
+}
+
+async function loadScripts() {
+  const r = await fetch('/api/data/conversations').then(r => r.json());
+  const el = $('scripts');
+  for (const s of r.scripts) {
+    const card = document.createElement('div');
+    const cls = s.id.startsWith('blocked') ? 'block' : 'pass';
+    card.className = `script-card ${cls}`;
+    card.innerHTML = `<div class="script-title">${escapeHtml(s.title)}</div>
+      <div class="script-desc">${escapeHtml(s.description)}</div>`;
+    card.onclick = () => runScript(s);
+    el.appendChild(card);
+  }
+}
+
+async function runScript(s) {
+  for (const msg of s.messages) {
+    $('input').value = msg;
+    await send();
+    await new Promise(r => setTimeout(r, 200));
+  }
+}
+
+async function loadOrders() {
+  const r = await fetch('/api/data/orders').then(r => r.json());
+  const el = $('orders');
+  for (const o of r.orders) {
+    const items = o.items.map(i => i.name).join(', ');
+    el.innerHTML += `<div class="order"><strong>${o.order_id}</strong> · ${o.status}<br>
+      ${items} · ¥${o.total}</div>`;
+  }
+}
+
+async function resetSession() {
+  await fetch('/api/session/reset', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({session_id: SESSION_ID})
+  });
+  $('chat').innerHTML = '<div class="msg-row assistant"><div class="bubble">对话已重置。</div></div>';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function scrollChat() {
+  const c = $('chat');
+  c.scrollTop = c.scrollHeight;
+}
+
+loadScripts();
+loadOrders();
+refreshStats();
+</script>
+</body>
+</html>
