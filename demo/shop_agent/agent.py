@@ -142,17 +142,22 @@ class ShopAgent:
 # ---------------- helpers ----------------
 
 def _state_for(history: list[dict]) -> dict[str, Any]:
-    """Naive state inference for the context_bypass layer:
-    if the last assistant message asked a follow-up, mark us as collecting_slots."""
-    if not history:
-        return {"intent": None, "stage": "awaiting_intent"}
-    last_assistant = next(
-        (m for m in reversed(history) if m["role"] == "assistant"), None
-    )
-    if last_assistant and any(s in (last_assistant.get("content") or "")
-                              for s in ["请提供", "请确认", "想查哪", "哪一个"]):
-        return {"intent": "shop_support", "stage": "collecting_slots"}
-    return {"intent": "shop_support", "stage": "awaiting_intent"}
+    """Build the GuardContext.state for this turn.
+
+    Earlier versions tried to auto-flip into `collecting_slots` whenever the
+    last assistant message looked like a follow-up question. That turned out
+    to be far too permissive: as soon as the agent said "哪一个呢？" *any*
+    next user message was waved through, including blatantly off-topic ones
+    like "今天天气怎么样".
+
+    The guard works perfectly well on each message individually thanks to
+    the rule-layer keywords (e.g. "ord-" covers short order-id replies), so
+    we leave context_bypass disarmed here. A real agent that does explicit
+    slot filling should pass state={"stage": "collecting_slots"} *only*
+    while it is actively waiting for a specific named slot — not whenever
+    it asks a follow-up question.
+    """
+    return {"intent": None, "stage": "awaiting_intent"}
 
 
 def _scope_history_for_llm(history: list[dict], user_id: str) -> list[dict]:

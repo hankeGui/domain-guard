@@ -66,6 +66,34 @@ def test_real_off_topic_still_blocked(agent):
         assert trace.blocked, f"{msg!r} should still be blocked"
 
 
+def test_off_topic_blocked_even_after_agent_follow_up(agent):
+    """Regression: an earlier `_state_for` heuristic would set
+    stage=collecting_slots whenever the last assistant message asked a
+    follow-up (e.g. "想查哪一个呢？"), causing the next user message —
+    even blatantly off-topic ones like 天气怎么样 — to slip through via
+    context_bypass. This test pins down the safer behaviour."""
+    history: list = []
+    # Turn 1 — list orders, agent will ask "想查哪一个呢？"
+    trace1, history = agent.chat("查订单", history=history)
+    assert not trace1.blocked
+    assert "哪一个" in trace1.final_reply or "想查" in trace1.final_reply
+
+    # Turn 2 — totally off-topic. Must NOT be context-bypassed.
+    trace2, history = agent.chat("天气怎么样", history=history)
+    assert trace2.blocked, "off-topic after a follow-up should still be blocked"
+    guard_ev = trace2.events[0]
+    assert guard_ev.detail["matched_layer"] != "context_bypass"
+
+
+def test_short_slot_reply_still_passes_after_follow_up(agent):
+    """The complement: legitimate short slot replies (an order id) must
+    still flow, because the rule layer covers them via the 'ord-' keyword."""
+    history: list = []
+    _, history = agent.chat("查订单", history=history)
+    trace, _ = agent.chat("ORD-1002", history=history)
+    assert not trace.blocked, "valid order-id follow-up must pass"
+
+
 def test_all_example_fallbacks_are_friendly():
     """Same rule for the YAMLs we ship as examples — readers will copy these."""
     import yaml
