@@ -37,6 +37,11 @@
   .stat.blocked .value{color:var(--block);}
 
   #chat{flex:1;overflow:auto;padding:18px 14px;}
+  .welcome-card{margin:20px auto;max-width:520px;padding:14px 18px;
+    background:var(--panel2);border:1px dashed var(--border);border-radius:8px;}
+  .welcome-title{font-size:14px;color:var(--accent);margin-bottom:8px;font-weight:600;}
+  .welcome-body{font-size:12px;color:var(--muted);line-height:1.8;}
+  .welcome-body strong{color:var(--fg);}
   .msg-row{margin-bottom:18px;}
   .bubble{display:inline-block;max-width:78%;padding:8px 12px;border-radius:10px;
     background:var(--panel);white-space:pre-wrap;}
@@ -119,8 +124,16 @@
       <div class="stat saved"><div class="label">节省 tokens</div><div class="value" id="s-saved">0</div></div>
     </div>
     <div id="chat">
-      <div class="msg-row assistant">
-        <div class="bubble">您好 😊 我是这里的电商客服小助手，可以帮您查订单、追物流、办退换货。试试直接打个招呼，或者输入订单号（如 ORD-1001）；右边也有"试试看"一键对话。</div>
+      <div class="welcome-card">
+        <div class="welcome-title">👋 欢迎试用 domain-guard demo</div>
+        <div class="welcome-body">
+          这是一个带 <strong>domain-guard</strong> 守卫的电商客服 agent。试试：<br>
+          • 直接打招呼："hi"、"你好"<br>
+          • 查订单："我的 ORD-1001 到哪了"<br>
+          • 跑题试探："你是什么模型"（会看到 guard 友好引导）<br>
+          • 右侧的"试试看"卡片，一键加载预设对话<br><br>
+          每条消息下方会显示彩色时间线：紫色 guard / 蓝色 llm / 绿色 tool / 红色 blocked。
+        </div>
       </div>
     </div>
     <div class="input-row">
@@ -283,7 +296,10 @@ async function resetSession() {
     method: 'POST', headers: {'content-type':'application/json'},
     body: JSON.stringify({session_id: SESSION_ID})
   });
-  $('chat').innerHTML = '<div class="msg-row assistant"><div class="bubble">对话已重置。</div></div>';
+  $('chat').innerHTML = `<div class="welcome-card">
+    <div class="welcome-title">对话已重置</div>
+    <div class="welcome-body">来发条新消息试试。</div>
+  </div>`;
 }
 
 function escapeHtml(s) {
