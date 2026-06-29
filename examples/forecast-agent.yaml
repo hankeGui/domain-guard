@@ -76,10 +76,11 @@ pipeline:
 
 fallback:
   reply: |
-    抱歉，我专注于 FinSense 产品和 Forecast 管理，无法回答这个问题。
-    你可以问我：
-    • Forecast 管理 — 查询/更新预测数据
-    • 产品 Forecast 预估 — 基于现有数据做预测
+    您好 😊 我可以帮您处理 FinSense 产品和 Forecast 相关问题：
+    📊 Forecast 管理 — 查询/更新预测数据
+    📈 产品 Forecast 预估 — 基于现有数据做预测
+
+    您想了解哪一项呢？
   suggested_replies:
     - Forecast管理
     - 产品Forecast预估

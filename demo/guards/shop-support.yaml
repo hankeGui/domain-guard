@@ -24,6 +24,7 @@ pipeline:
       - "讲.*笑话"
       - "今天.*天气"
     allow_keywords:
+      # business keywords
       - 订单
       - order
       - ord-
@@ -40,6 +41,25 @@ pipeline:
       - invoice
       - 支付
       - payment
+      # social niceties — let these through so the agent can greet back
+      - hi
+      - hello
+      - 你好
+      - 您好
+      - 嗨
+      - 哈喽
+      - 早上好
+      - 下午好
+      - 晚上好
+      - 谢谢
+      - thanks
+      - thank you
+      - 再见
+      - bye
+      - 怎么用
+      - 你能做什么
+      - 你能帮我
+      - 帮我做什么
 
   - type: embedding
     domain_examples:
@@ -68,12 +88,12 @@ pipeline:
 
 fallback:
   reply: |
-    抱歉，我是电商客服助手，只能处理订单、物流、退换货、发票和支付相关问题。
-    您可以问我：
-    • 查询订单状态（如 "ORD-1001 的订单到哪了"）
-    • 物流追踪（如 "SF-9988-7766 快递在哪"）
-    • 退换货申请
-    • 发票或支付问题
+    您好 😊 我是这里的电商客服小助手，可以帮您：
+    📦 查订单状态（试试 "ORD-1001 到哪了"）
+    🚚 追踪物流（试试 "SF-9988-7766 在哪"）
+    ↩️ 退换货 / 发票 / 支付问题
+
+    您想了解哪一项呢？
   suggested_replies:
     - 查询订单
     - 物流追踪

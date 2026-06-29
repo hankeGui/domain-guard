@@ -226,6 +226,33 @@ class MockProvider(LLMProvider):
 
         # First-pass logic: very small intent rules
         lower = user_msg.lower()
+
+        # Social niceties — greet back warmly, no tool calls.
+        GREETINGS = ("hi", "hello", "你好", "您好", "早上好", "下午好", "晚上好",
+                     "嗨", "哈喽")
+        THANKS = ("谢谢", "thanks", "thank you", "感谢")
+        BYE = ("再见", "拜拜", "bye", "goodbye")
+        if any(g in lower for g in GREETINGS) and len(user_msg) <= 12:
+            return LLMResponse(
+                text="您好 😊 我是这里的电商客服小助手。\n您可以问我：\n📦 查订单（比如 \"ORD-1001 到哪了\"）\n🚚 追物流（比如 \"SF-9988-7766 在哪\"）\n↩️ 退换货 / 发票相关问题",
+                input_tokens=80, output_tokens=60,
+            )
+        if any(t in lower for t in THANKS):
+            return LLMResponse(
+                text="不客气，还有什么可以帮您的吗？",
+                input_tokens=80, output_tokens=15,
+            )
+        if any(b in lower for b in BYE):
+            return LLMResponse(
+                text="好的，祝您生活愉快～有问题随时回来 👋",
+                input_tokens=80, output_tokens=15,
+            )
+        if "怎么用" in user_msg or "你能做什么" in user_msg or "你能帮我" in user_msg:
+            return LLMResponse(
+                text="我可以帮您：\n• 查询订单状态、物流位置\n• 申请退货 / 换货 / 退款\n• 发票和支付问题\n\n试试问 \"我的 ORD-1001 到哪了\" 吧 🙂",
+                input_tokens=80, output_tokens=60,
+            )
+
         if "ord-" in lower:
             # Extract the order id
             import re
@@ -261,45 +288,53 @@ class MockProvider(LLMProvider):
             )
         if "退" in user_msg:
             return LLMResponse(
-                text="好的，请提供订单号，我帮您发起退货。",
+                text="好的，请告诉我订单号，我帮您处理 😊",
                 input_tokens=120, output_tokens=30,
             )
         return LLMResponse(
-            text=f"[mock] 我收到了您的消息：{user_msg!r}。在 mock 模式下我只能识别订单/物流/退货相关请求。",
-            input_tokens=100, output_tokens=40,
+            text=(f"嗯，我没太理解您说的 {user_msg!r}。\n"
+                  "您可以试试：\n"
+                  "• 报订单号（比如 \"ORD-1001\"）\n"
+                  "• 报快递号（比如 \"SF-9988-7766\"）\n"
+                  "• 或者直接说 \"想退货\" / \"查物流\""),
+            input_tokens=100, output_tokens=50,
         )
 
     def _summarize_tool_result(self, result: Any) -> LLMResponse:
         if isinstance(result, dict) and result.get("error"):
             return LLMResponse(
-                text=f"[mock] 抱歉，没找到对应记录（{result.get('error')}）。请确认订单号或快递号。",
+                text=("嗯～我这边没查到对应记录哎，麻烦您再确认下订单号 / 快递号？"
+                      f"\n（系统返回：{result.get('error')}）"),
                 input_tokens=200, output_tokens=40,
             )
         # Order check goes first — an order dict can also have shipment_id.
         if isinstance(result, dict) and "order_id" in result:
-            items = ", ".join(i["name"] for i in result.get("items", []))
+            items = "、".join(i["name"] for i in result.get("items", []))
             return LLMResponse(
-                text=(f"[mock] 订单 {result['order_id']}：{items}，"
-                      f"金额 ¥{result.get('total')}，状态：{result.get('status')}。"),
+                text=(f"找到啦 ✅\n订单号：{result['order_id']}\n"
+                      f"商品：{items}\n"
+                      f"金额：¥{result.get('total')}\n"
+                      f"状态：{result.get('status')}"),
                 input_tokens=280, output_tokens=70,
             )
         if isinstance(result, dict) and "carrier" in result:
             return LLMResponse(
-                text=(f"[mock] 您的快递（{result['shipment_id']}）目前由 "
-                      f"{result.get('carrier','?')} 配送，状态：{result.get('status')}，"
-                      f"当前位置：{result.get('current_location','?')}，"
-                      f"预计 {result.get('estimated_delivery','?')} 送达。"),
+                text=(f"快递 {result['shipment_id']} 状态如下 📦\n"
+                      f"承运：{result.get('carrier','?')}\n"
+                      f"当前位置：{result.get('current_location','?')}\n"
+                      f"状态：{result.get('status')}\n"
+                      f"预计 {result.get('estimated_delivery','?')} 送达"),
                 input_tokens=300, output_tokens=80,
             )
         if isinstance(result, dict) and "orders" in result:
             n = len(result["orders"])
-            ids = ", ".join(o["order_id"] for o in result["orders"])
+            ids = "、".join(o["order_id"] for o in result["orders"])
             return LLMResponse(
-                text=f"[mock] 您有 {n} 个订单：{ids}。想查哪一个？",
+                text=f"您目前有 {n} 个订单：{ids}\n想查哪一个呢？",
                 input_tokens=300, output_tokens=60,
             )
         return LLMResponse(
-            text=f"[mock] 工具返回：{str(result)[:200]}",
+            text=f"工具返回了一些数据：{str(result)[:200]}",
             input_tokens=200, output_tokens=50,
         )
 

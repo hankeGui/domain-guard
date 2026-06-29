@@ -120,7 +120,13 @@ def test_get_config(sidecar):
 
 def test_put_config_valid(sidecar):
     orig = sidecar.get("/v1/guards/forecast-agent-guard/config").json()["content"]
-    modified = orig.replace("抱歉，我专注于", "[modified] 抱歉，我专注于")
+    # Insert a deterministic marker we can read back. We don't care WHERE
+    # in the reply it lands, only that the reload picked it up.
+    marker = "[admin-modified-marker]"
+    modified = orig.replace("您好", f"{marker}您好", 1)
+    if marker not in modified:
+        # Fallback: just append the marker into the existing reply value.
+        modified = orig.replace("Forecast", f"{marker}Forecast", 1)
     r = sidecar.put("/v1/guards/forecast-agent-guard/config",
                     json={"content": modified})
     assert r.status_code == 200
@@ -130,7 +136,7 @@ def test_put_config_valid(sidecar):
     ck = sidecar.post("/v1/check", json={
         "guard_id": "forecast-agent-guard", "message": "你是什么模型",
     }).json()
-    assert "[modified]" in ck["fallback_reply"]
+    assert marker in ck["fallback_reply"]
 
 
 def test_put_config_invalid_rejected(sidecar):
