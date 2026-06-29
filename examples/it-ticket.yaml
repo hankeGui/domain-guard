@@ -1,0 +1,79 @@
+name: it-ticket-guard
+version: "1.0"
+mode: enforce
+
+domain:
+  description: >
+    内部 IT 工单助手 — 提交故障报告、密码重置、软件安装、VPN/网络问题、
+    设备申请、权限申请。不处理代码 review、业务咨询、闲聊。
+
+pipeline:
+  - type: context_bypass
+    when:
+      state.stage: collecting_slots
+
+  - type: rule
+    block_patterns:
+      - "你是.*(什么|哪个).*(模型|ai|llm)"
+      - "who are you"
+      - "讲.*笑话"
+      - "今天.*天气"
+      - "review .* code"        # 代码 review 不在范围
+      - "帮我 ?(写|实现|debug)"
+    allow_keywords:
+      - 工单
+      - ticket
+      - 故障
+      - 密码重置
+      - password reset
+      - vpn
+      - 网络
+      - network
+      - 软件安装
+      - install
+      - 设备
+      - laptop
+      - 申请权限
+      - permission
+      - 邮箱
+      - email
+      - account
+      - 账户
+
+  - type: embedding
+    domain_examples:
+      - 我电脑开不了机
+      - VPN 连不上
+      - 申请安装 Office
+      - 密码忘了想重置
+      - 邮箱收不到邮件
+      - 申请一台新笔记本
+      - 要访问 Jira 的权限
+      - 提交一个故障工单
+      - 网络很卡很慢
+      - 显示器坏了
+      - SAP 登录不上去
+      - 申请 GitHub 企业账户
+      - 鼠标键盘不工作
+      - 远程桌面连不上
+    ood_examples:
+      - 你是什么模型
+      - 帮我 review 代码
+      - 今天天气
+      - 写一段 Python
+      - 讲个笑话
+      - 翻译
+      - 解释一下 Kubernetes 的原理
+    threshold:
+      pass: 0.55
+      block: 0.30
+
+fallback:
+  reply: |
+    抱歉，我是 IT 工单助手，只处理故障报告、密码重置、软件安装、网络/VPN、
+    设备申请和权限申请。技术咨询请提交工单后由工程师处理。
+  suggested_replies:
+    - 报故障
+    - 重置密码
+    - 申请软件
+    - 网络问题

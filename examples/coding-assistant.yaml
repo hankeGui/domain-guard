@@ -1,0 +1,88 @@
+name: coding-assistant-guard
+version: "1.0"
+mode: enforce
+
+domain:
+  description: >
+    编程助手 — 代码生成、调试、解释、重构、单元测试。技术语言包括 Python、
+    JavaScript、Go、Rust、Java、SQL。不处理通用闲聊、生活建议、新闻时事、
+    模型自我介绍。
+
+pipeline:
+  - type: context_bypass
+    when:
+      state.stage: collecting_slots
+
+  - type: rule
+    block_patterns:
+      - "你是.*(什么|哪个).*(模型|ai|llm)"
+      - "who are you"
+      - "what model"
+      - "讲.*笑话"
+      - "今天.*(天气|新闻)"
+      - "推荐.*(电影|书|餐厅)"
+      - "我.*(开心|难过|郁闷|心情)"   # 情感支持不在范围
+    allow_keywords:
+      - python
+      - javascript
+      - typescript
+      - golang
+      - rust
+      - java
+      - sql
+      - 代码
+      - code
+      - bug
+      - 调试
+      - debug
+      - 重构
+      - refactor
+      - 测试
+      - test
+      - 函数
+      - function
+      - 类
+      - class
+      - 接口
+      - api
+      - 报错
+      - error
+      - exception
+
+  - type: embedding
+    domain_examples:
+      - 帮我写一个 Python 快排
+      - 这段代码为什么报错
+      - 把这个函数重构得简洁一些
+      - 给这个类写单元测试
+      - 解释一下这段代码
+      - 用 Go 实现一个 HTTP 服务
+      - SQL 怎么查每个用户的最新订单
+      - JavaScript 闭包是什么
+      - 帮我看下这个 stack trace
+      - TypeScript 怎么定义泛型
+      - Rust 借用规则不懂
+      - Java 异常处理最佳实践
+      - 优化这个 N+1 查询
+      - 设计一个 REST API
+    ood_examples:
+      - 你是什么模型
+      - 今天天气怎么样
+      - 推荐一个餐厅
+      - 讲个笑话
+      - 我心情不好
+      - 帮我写邮件
+      - 解释一下经济学原理
+    threshold:
+      pass: 0.55
+      block: 0.30
+
+fallback:
+  reply: |
+    抱歉，我是编程助手，只回答代码、调试、重构、测试、API 设计相关的问题。
+    如果是其他问题，请使用对应的助手。
+  suggested_replies:
+    - 写代码
+    - 调试报错
+    - 解释代码
+    - 单元测试

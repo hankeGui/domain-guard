@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Auth** for the sidecar:
+  - `ADMIN_API_KEY` env var requires `X-API-Key` for write endpoints
+    (`PUT /v1/guards/{id}/config`, `POST /v1/guards/{id}/reload`).
+  - Optional `CHECK_API_KEY` extends the same check to `/v1/check` and
+    `/v1/route`.
+  - Admin UI input field for the key (persisted in `localStorage`).
+  - `/health` advertises which auth modes are required.
+- **More example guards** demonstrating the library across domains:
+  `customer-support.yaml`, `it-ticket.yaml`, `coding-assistant.yaml`.
+- **PyPI publish workflow** (`.github/workflows/publish.yml`) using OIDC
+  trusted publishing — `v*` tag pushes auto-publish to PyPI.
+- 22 new tests (7 unit auth + 8 integration auth + 7 example sanity).
+
 ## [0.1.0] — 2026-06-29
 
 Initial public release.

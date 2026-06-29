@@ -64,7 +64,12 @@
 <header>
   <h1>domain-guard admin</h1>
   <span class="pill" id="health-pill">loading...</span>
-  <span class="right">auto-refresh every 3s</span>
+  <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <span id="auth-status" class="pill" style="display:none;"></span>
+    <input id="api-key-input" type="password" placeholder="X-API-Key (optional)"
+           style="width:220px;font-size:11px;" oninput="onApiKeyChange()">
+    <span class="right" style="font-size:11px;">auto-refresh every 3s</span>
+  </span>
 </header>
 <main>
   <aside>
@@ -135,6 +140,25 @@
 <script>
 let currentGuard = null;
 let allGuards = [];
+let apiKey = localStorage.getItem('domain_guard_api_key') || '';
+document.getElementById('api-key-input').value = apiKey;
+
+function onApiKeyChange() {
+  apiKey = document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('domain_guard_api_key', apiKey);
+  refreshHealth();
+}
+
+// Drop-in wrapper around fetch that adds X-API-Key when one is set.
+async function api(url, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  if (apiKey) headers['X-API-Key'] = apiKey;
+  const r = await fetch(url, Object.assign({}, opts, {headers}));
+  if (r.status === 401) {
+    toast('Auth required — set the X-API-Key in the header', false);
+  }
+  return r;
+}
 
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
@@ -172,6 +196,19 @@ async function refreshHealth() {
     `${r.guards.length} guard(s) loaded · ${r.reload_count} reload(s)`;
   allGuards = r.guards;
   renderGuardList();
+
+  // Surface auth requirements so users know whether to fill in the API key.
+  const a = r.auth || {};
+  const statusEl = document.getElementById('auth-status');
+  if (a.admin_required || a.check_required) {
+    const labels = [];
+    if (a.admin_required) labels.push('admin');
+    if (a.check_required) labels.push('check');
+    statusEl.textContent = 'auth: ' + labels.join('+');
+    statusEl.style.display = '';
+  } else {
+    statusEl.style.display = 'none';
+  }
 }
 
 function isConfigTabActive() {
@@ -263,14 +300,14 @@ function renderKV(tableId, obj) {
 
 async function loadConfig(name) {
   document.getElementById('cfg-guard').textContent = name;
-  const r = await fetch(`/v1/guards/${encodeURIComponent(name)}/config`).then(r=>r.json());
+  const r = await api(`/v1/guards/${encodeURIComponent(name)}/config`).then(r=>r.json());
   document.getElementById('cfg-text').value = r.content || '';
 }
 
 async function saveConfig() {
   if (!currentGuard) { toast('Pick a guard first', false); return; }
   const content = document.getElementById('cfg-text').value;
-  const resp = await fetch(`/v1/guards/${encodeURIComponent(currentGuard)}/config`, {
+  const resp = await api(`/v1/guards/${encodeURIComponent(currentGuard)}/config`, {
     method: 'PUT',
     headers: {'content-type': 'application/json'},
     body: JSON.stringify({content})
@@ -287,7 +324,7 @@ async function saveConfig() {
 
 async function reloadGuard() {
   if (!currentGuard) { toast('Pick a guard first', false); return; }
-  const resp = await fetch(`/v1/guards/${encodeURIComponent(currentGuard)}/reload`, {method:'POST'});
+  const resp = await api(`/v1/guards/${encodeURIComponent(currentGuard)}/reload`, {method:'POST'});
   if (resp.ok) {
     const r = await resp.json();
     toast(`Reloaded (count=${r.reload_count})`);

@@ -273,17 +273,46 @@ This project uses semver.
 - Minor (x.**Y**.0): new layers/providers/endpoints, additive config fields.
 - Major (**X**.0.0): breaking config schema or API changes.
 
-To cut a release:
+### Cutting a release
+
+1. Update `CHANGELOG.md` with a new section.
+2. Bump `version` in `pyproject.toml`.
+3. Commit, then tag:
+
+   ```bash
+   git tag -a v0.2.0 -m "v0.2.0"
+   git push && git push --tags
+   ```
+
+4. The `.github/workflows/publish.yml` workflow picks up the `v*` tag, builds
+   sdist + wheel, validates with `twine check`, and publishes to PyPI using
+   **OIDC trusted publishing** — no PyPI API token needed.
+
+### One-time PyPI setup
+
+Before the first release, configure trusted publishing on PyPI:
+
+1. Create the project on PyPI (an empty placeholder is fine; or skip and the
+   first publish will create it under the publisher's account).
+2. PyPI project settings → Publishing → Add a "Trusted publisher":
+   - Repository owner: `hankeGui`
+   - Repository name: `domain-guard`
+   - Workflow file: `publish.yml`
+   - Environment: `pypi`
+3. Same again for TestPyPI with environment `testpypi` if you want a staging path.
+4. On GitHub, create the `pypi` (and `testpypi`) environments under repo
+   settings → Environments. No secrets needed.
+
+Manual trigger via `Actions → Publish to PyPI → Run workflow` will push to
+TestPyPI for a smoke test before cutting a real tag.
+
+### Local build
 
 ```bash
-# 1. Update CHANGELOG.md with the new section
-# 2. Bump version in pyproject.toml
-# 3. Tag
-git tag -a v0.2.0 -m "v0.2.0"
-git push --tags
+pip install build twine
+python -m build              # → dist/*.whl + dist/*.tar.gz
+twine check dist/*           # validate metadata
 ```
-
-CI doesn't auto-publish to PyPI yet — release artifacts live on the GitHub release page.
 
 ---
 

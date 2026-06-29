@@ -30,6 +30,11 @@ Every layer can return `pass` / `block` / `defer`. First non-defer wins. If ever
 ## Install
 
 ```bash
+pip install domain-guard[local]    # core + local sentence-transformers (once on PyPI)
+
+# Or from source:
+git clone https://github.com/hankeGui/domain-guard.git
+cd domain-guard
 pip install -e ".[local]"          # core + local sentence-transformers
 pip install -e ".[local,claude]"   # + Claude Haiku LLM fallback
 pip install -e ".[sidecar]"        # + FastAPI sidecar
@@ -237,6 +242,20 @@ Backed by:
 - `GET/PUT /v1/guards/{id}/config`
 - `POST /v1/guards/{id}/reload`
 
+### Securing the admin endpoints
+
+In production, set `ADMIN_API_KEY` so that write operations require an
+`X-API-Key` header:
+
+```bash
+ADMIN_API_KEY=<long random> python -m domain_guard.sidecar
+```
+
+Read endpoints (`/health`, `/metrics`, `GET .../config`) remain open so
+monitoring still works. Optionally also set `CHECK_API_KEY` to require the
+same header on `/v1/check` and `/v1/route`. The admin UI has an input field
+at the top-right to set the key from the browser (stored in `localStorage`).
+
 ## Gateway pattern (drop in front of an existing agent)
 
 `examples/finsense_gateway.py` shows how to put the guard in front of an
@@ -283,7 +302,9 @@ examples/
 - [x] Rate limit / per-user quota (memory + Redis)
 - [x] Multi-guard router with sticky session routing
 - [x] Admin UI for live monitoring + config editing
-- [ ] Auth on admin endpoints (currently open)
+- [x] Auth on admin endpoints (X-API-Key)
+- [x] More example agents (forecast / HR / customer-support / IT / coding)
+- [ ] PyPI release automation (workflow in place, awaiting first tag)
 - [ ] Per-route metrics labels (which guard the router picked)
 
 ## License

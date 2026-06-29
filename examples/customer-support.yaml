@@ -1,0 +1,77 @@
+name: customer-support-guard
+version: "1.0"
+mode: enforce
+
+domain:
+  description: >
+    电商客户支持 — 订单查询、退换货、物流、发票、支付问题。
+    不包括产品推荐、营销活动、技术开发、模型自我介绍。
+
+pipeline:
+  - type: context_bypass
+    when:
+      state.stage: collecting_slots
+
+  - type: rule
+    block_patterns:
+      - "你是.*(什么|哪个).*(模型|ai|llm)"
+      - "who are you"
+      - "写.*(python|java|代码|程序)"
+      - "讲.*笑话"
+      - "ignore .* (previous|above)"
+      - "推荐.*(产品|商品)"   # 推荐属于销售，不在支持范围
+    allow_keywords:
+      - 订单
+      - order
+      - 退货
+      - return
+      - 换货
+      - exchange
+      - 物流
+      - shipping
+      - 快递
+      - delivery
+      - 发票
+      - invoice
+      - 退款
+      - refund
+      - 支付
+      - payment
+
+  - type: embedding
+    domain_examples:
+      - 我的订单怎么还没到
+      - 想申请退货
+      - 物流卡了三天了
+      - 怎么开发票
+      - 支付失败了
+      - 订单号 12345 在哪查
+      - 我要换尺码
+      - 退款几天到账
+      - 我的快递丢了
+      - 怎么取消订单
+      - 客服在哪联系
+      - 投诉一个店家
+      - 售后流程是什么
+      - 包裹被签收了但没收到
+    ood_examples:
+      - 你是什么模型
+      - 推荐一个手机
+      - 帮我写代码
+      - 今天天气怎么样
+      - 讲个笑话
+      - 翻译这句话
+      - 这个产品好用吗
+    threshold:
+      pass: 0.55
+      block: 0.30
+
+fallback:
+  reply: |
+    抱歉，我是客户支持助手，只能处理订单、物流、退换货、发票、支付相关问题。
+    如果是产品推荐或购买咨询，请联系销售客服。
+  suggested_replies:
+    - 查询订单
+    - 申请退货
+    - 物流问题
+    - 开发票

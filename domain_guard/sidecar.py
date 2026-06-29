@@ -15,6 +15,9 @@ Environment variables:
     RATE_WINDOW       window seconds (default: 60)
     RATE_BACKEND      "memory" or "redis" (default: memory)
     REDIS_URL         used when RATE_BACKEND=redis
+    ADMIN_API_KEY     required for write endpoints (PUT/POST guards/...). If
+                      unset, write endpoints are unauthenticated.
+    CHECK_API_KEY     optional; if set, /v1/check and /v1/route require it too.
 """
 
 from __future__ import annotations
@@ -27,13 +30,14 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from fastapi import FastAPI, HTTPException, Request, Response
+    from fastapi import Depends, FastAPI, HTTPException, Request, Response
     from pydantic import BaseModel, Field
 except ImportError as e:  # pragma: no cover
     raise ImportError(
         "Sidecar requires fastapi/uvicorn. Install with: pip install domain-guard[sidecar]"
     ) from e
 
+from .auth import admin_auth_enabled, check_auth_enabled, require_admin, require_check
 from .cache import LRUResultCache
 from .context import GuardContext
 from .core import DomainGuard
@@ -282,6 +286,10 @@ def health() -> dict:
         "guards": registry.list_ids(),
         "reload_count": registry.reload_count,
         "rate_limit": limiter.stats() if limiter else None,
+        "auth": {
+            "admin_required": admin_auth_enabled(),
+            "check_required": check_auth_enabled(),
+        },
     }
 
 
@@ -292,7 +300,8 @@ def list_guards() -> dict:
 
 
 @app.post("/v1/check", response_model=CheckResponse)
-def check(req: CheckRequest, request: Request, debug: bool = False) -> Response:
+def check(req: CheckRequest, request: Request, debug: bool = False,
+          _auth=Depends(require_check)) -> Response:
     assert registry is not None
     guard = registry.get(req.guard_id)
     if guard is None:
@@ -358,7 +367,8 @@ def prom_metrics() -> Response:
 
 
 @app.post("/v1/route", response_model=RouteResponse)
-def route(req: RouteRequest, request: Request) -> RouteResponse:
+def route(req: RouteRequest, request: Request,
+          _auth=Depends(require_check)) -> RouteResponse:
     global router_singleton, router_guards_signature
     assert registry is not None
     guards = registry.all_guards()
@@ -447,7 +457,8 @@ def get_guard_config(guard_id: str) -> dict:
 
 
 @app.put("/v1/guards/{guard_id}/config")
-def put_guard_config(guard_id: str, body: UpdateConfigBody) -> dict:
+def put_guard_config(guard_id: str, body: UpdateConfigBody,
+                     _auth=Depends(require_admin)) -> dict:
     assert registry is not None
     with registry._lock:  # type: ignore[attr-defined]
         path = registry._guard_files.get(guard_id)
@@ -481,7 +492,7 @@ def put_guard_config(guard_id: str, body: UpdateConfigBody) -> dict:
 
 
 @app.post("/v1/guards/{guard_id}/reload")
-def reload_guard(guard_id: str) -> dict:
+def reload_guard(guard_id: str, _auth=Depends(require_admin)) -> dict:
     assert registry is not None
     with registry._lock:  # type: ignore[attr-defined]
         path = registry._guard_files.get(guard_id)
